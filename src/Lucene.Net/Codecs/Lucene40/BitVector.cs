@@ -461,12 +461,12 @@ namespace Lucene.Net.Codecs.Lucene40
                 {
                     CodecUtil.CheckFooter(input);
                 }
-                else
+                else if (version >= VERSION_DGAPS_CLEARED)
                 {
 #pragma warning disable 612, 618
                     CodecUtil.CheckEOF(input);
 #pragma warning restore 612, 618
-                }
+                } // otherwise, before this we cannot even check that we read the entire file due to bugs in those versions!!!!
                 if (Debugging.AssertsEnabled) Debugging.Assert(VerifyCount());
             }
             finally
