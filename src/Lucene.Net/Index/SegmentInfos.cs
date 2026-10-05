@@ -774,6 +774,15 @@ namespace Lucene.Net.Index
         {
             // Check marker file:
             string markerFileName = IndexFileNames.SegmentFileName(si.Name, "upgraded", Lucene3xSegmentInfoFormat.UPGRADED_SI_EXTENSION);
+
+            // LUCENE-6279: don't rely solely on existence of the marker file; also require that we see the marker
+            // file in our si.files(), which means we did previously at least attempt to write it:
+            if (si.GetFiles().Contains(markerFileName) == false)
+            {
+                return false;
+            }
+
+            // Also verify the marker file exists and has the proper header:
             IndexInput @in = null;
             try
             {

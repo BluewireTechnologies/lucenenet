@@ -1,7 +1,9 @@
 ﻿using J2N;
 using J2N.Numerics;
+using Lucene.Net.Codecs;
 using Lucene.Net.Diagnostics;
 using Lucene.Net.Index.Extensions;
+using Lucene.Net.Store;
 using NUnit.Framework;
 using RandomizedTesting.Generators;
 using System;
@@ -116,7 +118,7 @@ namespace Lucene.Net.Index
 
         internal static readonly string[] oldNames = new string[] {
             "30.cfs", "30.nocfs", "31.cfs", "31.nocfs", "32.cfs",
-            "32.nocfs", "34.cfs", "34.nocfs"
+            "32.nocfs", "34.cfs", "34.nocfs", "362.cfs"
         };
 
         internal readonly string[] unsupportedNames = new string[] {
@@ -1043,6 +1045,29 @@ namespace Lucene.Net.Index
             Assert.AreEqual(0, de.NextPosition());
             ir.Dispose();
             TestUtil.CheckIndex(dir);
+            dir.Dispose();
+        }
+
+        // LUCENE-6279
+        [Test]
+        public void TestLeftoverUpgradedFile()
+        {
+            var dir = NewDirectory(Random, oldIndexDirs["362.cfs"]);
+            if (dir is MockDirectoryWrapper) {
+                // We intentionally double-write the upgrade marker file:
+                ((MockDirectoryWrapper) dir).PreventDoubleWrite = false;
+            }
+            IndexWriter writer = new IndexWriter(dir, NewIndexWriterConfig(TEST_VERSION_CURRENT, new MockAnalyzer(Random)));
+
+            // Create errant leftover file, after opening IW but before closing IW:
+            IndexOutput output = dir.CreateOutput("_0_upgraded.si", IOContext.DEFAULT);
+            CodecUtil.WriteHeader(output, "SegmentInfo3xUpgrade", 0);
+            output.Dispose();
+
+            writer.AddDocument(new Document());
+            writer.Dispose();
+
+            // Causes FNFE on _0.si during check index before the fix:
             dir.Dispose();
         }
     }
